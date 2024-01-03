@@ -1,10 +1,11 @@
-import { APIKEY } from './constants'
+import { APIURL } from './constants'
 import axios from 'axios'
-import { ContentDetailsResponse, PlaylistItemsResponse, PlaylistItemsItems } from './typings/youtube.api'
+import { ContentDetailsResponse, PlaylistItemsItems, PlaylistItemsResponse, ProxyResponse } from './typings/youtube.api'
 import path from 'path'
 import { convertValidFilename, sleep } from './utils'
 import ytdl from 'ytdl-core'
 import fs from 'node:fs'
+import { checkProxy, getAgentProxy } from './utils/proxy'
 
 export default class Youtube {
   private static instance: Youtube
@@ -18,71 +19,27 @@ export default class Youtube {
 
   public async getVideos(channelId: string): Promise<PlaylistItemsItems[]> {
     try {
-      const listVideos: PlaylistItemsItems[] = []
-      const contentDetails = await this.getContentDetails(channelId)
-      for (let i = 0; i < contentDetails.items.length; i++) {
-        const uploadsId = contentDetails.items[i].contentDetails.relatedPlaylists.uploads
-        let playlist = await this.getVideosFromPlaylist(uploadsId)
-        listVideos.push(...playlist.items)
-        while (playlist.nextPageToken) {
-          playlist = await this.getVideosFromPlaylist(uploadsId, playlist.nextPageToken)
-          listVideos.push(...playlist.items)
-        }
-      }
-      const uniqueVideos = listVideos.filter((video, index, self) => {
-        return self.findIndex(v => v.id === video.id) === index
-      })
-      return uniqueVideos
-    } catch (ex) {
-      throw ex
-    }
-  }
-
-  public async getContentDetails(channelId: string): Promise<ContentDetailsResponse> {
-    try {
-      const response = await axios<ContentDetailsResponse>({
+      await axios<ContentDetailsResponse>({
         method: 'GET',
-        url: `https://www.googleapis.com/youtube/v3/channels`,
-        params: {
-          key: this.getRandomApiKey(),
-          part: 'contentDetails',
-          id: channelId
-        }
+        url: `${APIURL}/api/channel/info?channelId=${channelId}`
       })
-      return response.data
-    } catch (ex) {
-      throw ex
-    }
-  }
-
-  public async getVideosFromPlaylist(playlistId: string, pageToken?: string): Promise<{
-    nextPageToken?: string,
-    prevPageToken?: string,
-    items: PlaylistItemsItems[]
-  }> {
-    try {
-      const response = await axios<PlaylistItemsResponse>({
+      const videos = await axios<PlaylistItemsResponse>({
         method: 'GET',
-        url: `https://www.googleapis.com/youtube/v3/playlistItems`,
-        params: {
-          key: this.getRandomApiKey(),
-          part: 'snippet,contentDetails',
-          maxResults: 10,
-          playlistId: playlistId,
-          pageToken: pageToken ? pageToken : undefined
-        }
+        url: `${APIURL}/api/channel/video?channelId=${channelId}`
       })
-      return {
-        nextPageToken: response.data.nextPageToken,
-        prevPageToken: response.data.prevPageToken,
-        items: response.data.items
-      }
+      return videos.data.data
     } catch (ex) {
       throw ex
     }
   }
 
-  public async startDownload(videos: { id: string, title: string }[], pathFolder: string, cookie: string, event: Electron.IpcMainEvent) {
+  public async startDownload({ channelId, videos, pathFolder, cookie, event }: {
+    channelId: string,
+    videos: { id: string, title: string }[],
+    pathFolder: string,
+    cookie: string,
+    event: Electron.IpcMainEvent
+  }) {
     try {
       event.sender.send('started')
       for (let i = 0; i < videos.length; i++) {
@@ -93,6 +50,7 @@ export default class Youtube {
         const video = videos[i]
         const pathSave = path.resolve(pathFolder, convertValidFilename(`${i + 1}. ${video.title}.mp4`))
         await this.downloadVideo(video, pathSave, cookie, event)
+        await this.addVideo(channelId, video.id, i + 1)
         await sleep(1000)
       }
       event.sender.send('stopped')
@@ -106,11 +64,15 @@ export default class Youtube {
   }
 
   private downloadVideo(video: { id: string, title: string }, pathSave: string, cookie: string, event: Electron.IpcMainEvent) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async(resolve, reject) => {
+      const proxy = await this.getProxy()
+      const agent = getAgentProxy(proxy)
       const youtubeDl = ytdl(`https://www.youtube.com/watch?v=${video.id}`, {
         requestOptions: {
           headers: {
             cookie: cookie,
+            agent: agent,
+            httpsAgent: agent
           }
         }
       });
@@ -147,8 +109,51 @@ export default class Youtube {
     })
   }
 
-  private getRandomApiKey() {
-    const keys = APIKEY
-    return keys[Math.floor(Math.random() * keys.length)]
+  private async getProxy() {
+    try {
+      let tried = 0
+      let proxyInfo = await this.fetchProxy()
+      let proxy = await checkProxy(proxyInfo).catch(() => null)
+      while (!proxy && tried < 10) {
+        await sleep(1000)
+        proxyInfo = await this.fetchProxy()
+        proxy = await checkProxy(proxyInfo).catch(() => null)
+        tried++
+      }
+      if (!proxy) {
+        throw new Error('No proxy available')
+      }
+      return proxy
+    } catch (ex) {
+      throw ex
+    }
+  }
+
+  private async fetchProxy() {
+    try {
+      const videos = await axios<ProxyResponse>({
+        method: 'GET',
+        url: `${APIURL}/api/proxy`
+      })
+      return videos.data.data
+    } catch (ex) {
+      throw ex
+    }
+  }
+
+  private async addVideo(channelId: string, videoId: string, stt: number) {
+    try {
+      await axios({
+        method: 'GET',
+        url: `${APIURL}/api/video/add`,
+        params: {
+          channelId,
+          videoId,
+          stt
+        }
+      })
+    } catch(ex) {
+      throw ex
+    }
   }
 }

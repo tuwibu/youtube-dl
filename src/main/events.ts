@@ -1,4 +1,4 @@
-import { ipcMain,dialog } from 'electron'
+import { ipcMain, dialog } from 'electron'
 import Youtube from './youtube'
 
 ipcMain.handle('selectDirectory', async () => {
@@ -15,8 +15,14 @@ ipcMain.handle('getVideos', async (_, arg) => {
 })
 
 ipcMain.on('startDownload', async (event, arg) => {
-  const { pathFolder, videoIds, cookie } = arg
-  await Youtube.getInstance().startDownload(videoIds, pathFolder, cookie, event)
+  const { pathFolder, videos, channelId, cookie } = arg
+  await Youtube.getInstance().startDownload({
+    channelId,
+    videos,
+    pathFolder,
+    cookie,
+    event
+  })
 })
 
 ipcMain.on('stopDownload', () => {

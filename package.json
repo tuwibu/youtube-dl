@@ -23,11 +23,16 @@
     "@ant-design/icons": "^5.2.6",
     "@electron-toolkit/preload": "^2.0.0",
     "@electron-toolkit/utils": "^2.0.0",
+    "@reduxjs/toolkit": "1.9.5",
     "antd": "^5.12.6",
     "axios": "^1.6.3",
     "einf": "^1.5.1",
+    "https-proxy-agent": "^7.0.2",
     "lodash": "^4.17.21",
     "nanoid": "^5.0.4",
+    "react-redux": "^9.0.4",
+    "redux-persist": "^6.0.0",
+    "socks-proxy-agent": "^8.0.2",
     "ytdl-core": "^4.11.5"
   },
   "devDependencies": {

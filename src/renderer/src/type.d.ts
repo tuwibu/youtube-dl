@@ -2,6 +2,7 @@ export interface IValues {
   pathFolder: string,
   channelId: string,
   cookie: string,
+  thread: number,
 }
 export type VideoState = {
   kind: string,

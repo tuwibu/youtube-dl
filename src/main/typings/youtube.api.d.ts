@@ -1,9 +1,16 @@
 export type YoutubeApiResponse<T> = {
-  kind: string,
-  etag: string,
-  nextPageToken?: string,
-  prevPageToken?: string,
-  items: T,
+  success: boolean,
+  data: {
+    kind: string,
+    etag: string,
+    nextPageToken?: string,
+    prevPageToken?: string,
+    items: T,
+  }
+}
+export type ApiResponse<T> = {
+  success: boolean,
+  data: T,
 }
 export type ContentDetailsItems = {
   kind: string,
@@ -65,6 +72,14 @@ export type PlaylistItemsItems = {
     videoPublishedAt: string,
   },
 }
-
-export type ContentDetailsResponse = YoutubeApiResponse<ContentDetailsItems[]>
-export type PlaylistItemsResponse = YoutubeApiResponse<PlaylistItemsItems[]>
+export type ProxyState = {
+  id: number,
+  address: string,
+  username?: string,
+  password?: string,
+  createdAt: string,
+  updatedAt: string,
+}
+export type ContentDetailsResponse = ApiResponse<ContentDetailsItems>
+export type PlaylistItemsResponse = ApiResponse<PlaylistItemsItems[]>
+export type ProxyResponse = ApiResponse<ProxyState>
