@@ -35,7 +35,7 @@ export default class Youtube {
 
   public async startDownload({ channelId, videos, pathFolder, cookie, event }: {
     channelId: string,
-    videos: { id: string, title: string }[],
+    videos: { id: string, title: string, stt: number }[],
     pathFolder: string,
     cookie: string,
     event: Electron.IpcMainEvent
@@ -48,9 +48,9 @@ export default class Youtube {
           break
         }
         const video = videos[i]
-        const pathSave = path.resolve(pathFolder, convertValidFilename(`${i + 1}. ${video.title}.mp4`))
+        const pathSave = path.resolve(pathFolder, convertValidFilename(`${video.stt}. ${video.title}.mp4`))
         await this.downloadVideo(video, pathSave, cookie, event)
-        await this.addVideo(channelId, video.id, i + 1)
+        await this.addVideo(channelId, video.id, video.stt)
         await sleep(1000)
       }
       event.sender.send('stopped')

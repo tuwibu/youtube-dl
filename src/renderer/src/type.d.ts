@@ -56,4 +56,5 @@ export type VideoState = {
   percent?: string,
   downloaded?: string,
   total?: string,
+  stt?: number,
 }

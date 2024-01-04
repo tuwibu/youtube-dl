@@ -60,11 +60,12 @@ function View(): JSX.Element {
           channelId: values.channelId,
         }
       })
-      setVideos(videos.map((video) => {
+      setVideos(videos.map((video, id) => {
         const index = oldVideos.data.data.findIndex((oldVideo: any) => oldVideo.videoId === video.contentDetails.videoId)
         return {
           ...video,
           status: index !== -1 ? "done" : "pending",
+          stt: id + 1,
         }
       }))
     } catch (ex: any) {
@@ -80,6 +81,7 @@ function View(): JSX.Element {
         return {
           id: video.contentDetails.videoId,
           title: video.snippet.title,
+          stt: video.stt
         }
       })
       if (lists.length === 0) {
